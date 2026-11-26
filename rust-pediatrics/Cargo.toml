@@ -1,0 +1,16 @@
+[package]
+name = "pedia_spectra_core"
+version = "1.26.0"
+edition = "2021"
+description = "PEDIA-SPECTRA Rust DSP & Clinical Kinetics Core: 12-Pole Levinson-Durbin Infant Cry LPC Formants, Kubelka-Munk Bilirubin Inversion, AAP 2022 Bhutani Nomogram & Bateman Pharmacokinetics"
+license = "MIT"
+
+[lib]
+name = "pedia_spectra_core"
+crate-type = ["cdylib", "rlib"]
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"

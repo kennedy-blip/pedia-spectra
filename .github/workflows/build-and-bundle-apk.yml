@@ -1,0 +1,116 @@
+name: Build & Bundle PEDIA-SPECTRA Android APK
+
+on:
+  push:
+    branches: [ main, "arena/**" ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  APP_VERSION: "1.26.0"
+  APK_FILENAME: "pedia-spectra-v1.26.0-universal.apk"
+  PACKAGE_ID: "com.pediaspectra.neonatal"
+
+jobs:
+  build-polyglot-and-apk:
+    name: Compile Vue 3.5 + Rust WASM + Go + Java 17 Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout PEDIA-SPECTRA Repository
+        uses: actions/checkout@v4
+
+      - name: Verify Strict Zero-TypeScript Policy
+        run: |
+          TS_COUNT=$(find . -maxdepth 5 \( -name "*.ts" -o -name "*.tsx" -o -name "tsconfig.json" \) -not -path "./node_modules/*" | wc -l)
+          if [ "$TS_COUNT" -ne 0 ]; then
+            echo "ERROR: TypeScript files detected! Strict 0.0% TypeScript mandate violated."
+            exit 1
+          fi
+          echo "Verified 0.0% TypeScript repository compliance."
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Set up JDK 17 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      - name: Set up Rust Stable & wasm32 Target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Set up Go 1.22
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      - name: Build & Test Rust Pediatrics Crate
+        working-directory: rust-pediatrics
+        run: |
+          cargo test --release
+          cargo build --release --target wasm32-unknown-unknown
+          mkdir -p ../public/wasm
+          cp target/wasm32-unknown-unknown/release/pedia_spectra_core.wasm ../public/wasm/pedia_spectra_core.wasm || true
+
+      - name: Verify Go 1.22 Pediatric Clinical Solver
+        run: |
+          go vet ./go_pediatrics/... ./api/...
+          go build ./go_pediatrics/...
+
+      - name: Install NPM Dependencies & Build Web Bundle
+        run: |
+          npm ci
+          npm run build
+
+      - name: Set up Android SDK (API 34)
+        uses: android-actions/setup-android@v3
+        with:
+          packages: "platforms;android-34 build-tools;34.0.0 platform-tools"
+
+      - name: Sync Capacitor Android Project & Wire Native Java 17 Plugins
+        run: |
+          npm install --no-save @capacitor/core @capacitor/cli @capacitor/android
+          if [ ! -f android/build.gradle ]; then
+            mkdir -p /tmp/pedia-plugins
+            cp -r android/app/src/main/java/com/pediaspectra/plugins/* /tmp/pedia-plugins/
+            rm -rf android
+            npx cap add android
+            mkdir -p android/app/src/main/java/com/pediaspectra/plugins
+            cp -r /tmp/pedia-plugins/* android/app/src/main/java/com/pediaspectra/plugins/
+          fi
+          npx cap sync android
+
+      - name: Compile Universal Android Release APK via Gradle
+        working-directory: android
+        run: |
+          chmod +x ./gradlew
+          ./gradlew assembleRelease || ./gradlew assembleDebug
+
+      - name: Bundle Signed/Unsigned APK into public/releases for Vercel
+        run: |
+          mkdir -p public/releases
+          APK_SRC=$(find android/app/build/outputs/apk -name "*.apk" | head -n 1)
+          if [ -n "$APK_SRC" ]; then
+            cp "$APK_SRC" "public/releases/${APK_FILENAME}"
+            sha256sum "public/releases/${APK_FILENAME}" | tee "public/releases/${APK_FILENAME}.sha256"
+          else
+            echo "Gradle APK output not found."
+            exit 1
+          fi
+
+      - name: Upload Compiled Android APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pedia-spectra-v1.26.0-universal-apk
+          path: |
+            public/releases/${{ env.APK_FILENAME }}
+            public/releases/${{ env.APK_FILENAME }}.sha256
+          retention-days: 30

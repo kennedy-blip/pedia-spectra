@@ -1,0 +1,21 @@
+{
+  "name": "pedia-spectra",
+  "version": "1.26.0",
+  "private": true,
+  "type": "module",
+  "description": "PEDIA-SPECTRA: Infant Cry LPC Formant & Hyper-Phonation Triage Lab, Transcutaneous Bilirubin (Bhutani Nomogram) Jaundice Scanner, WHO IMCI Tachypnea & Chest-Retraction Monitor, Pediatric mg/kg Pharmacokinetic Overdose Shield & AAP Safe-Sleep Nursery Architect",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0 --port 5173",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0 --port 4173",
+    "cap:sync": "npx cap sync android"
+  },
+  "dependencies": {
+    "lucide-vue-next": "^0.468.0",
+    "vue": "^3.5.13"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.2.1",
+    "vite": "^6.0.7"
+  }
+}

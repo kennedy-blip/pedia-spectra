@@ -1,0 +1,28 @@
+{
+  "appId": "com.pediaspectra.neonatal",
+  "appName": "PEDIA-SPECTRA",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https",
+    "cleartext": false
+  },
+  "android": {
+    "allowMixedContent": false,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": false,
+    "minWebViewVersion": 89
+  },
+  "plugins": {
+    "PediatricBioAcousticSafeAudio": {
+      "sampleRateHz": 48000,
+      "cochlearSafetyCeilingDba": 50.0,
+      "audioSource": "UNPROCESSED"
+    },
+    "D65BilirubinCameraLux": {
+      "awbMode": "DAYLIGHT",
+      "lockAwbGains": true,
+      "nightFeedMaxLux": 5.0
+    }
+  }
+}
