@@ -21,7 +21,7 @@ static mut TELEMETRY_OUT: [f64; 24] = [0.0; 24];
 /// Returns pointer to the shared 24-element f64 output register for zero-copy WASM reads.
 #[no_mangle]
 pub extern "C" fn pedia_get_telemetry_ptr() -> *const f64 {
-    unsafe { TELEMETRY_OUT.as_ptr() }
+    core::ptr::addr_of!(TELEMETRY_OUT).cast::<f64>()
 }
 
 /// Executes 12-pole LPC infant cry formant & Golub-Corwin hyper-phonation triage on raw PCM audio.
@@ -49,24 +49,25 @@ pub extern "C" fn pedia_analyze_cry_lpc(
     );
     let top_idx = res.reflex_class as usize;
     unsafe {
-        TELEMETRY_OUT[0] = res.f0_hz;
-        TELEMETRY_OUT[1] = res.f1_hz;
-        TELEMETRY_OUT[2] = res.f2_hz;
-        TELEMETRY_OUT[3] = res.f3_hz;
-        TELEMETRY_OUT[4] = res.bw1_hz;
-        TELEMETRY_OUT[5] = res.bw2_hz;
-        TELEMETRY_OUT[6] = res.bw3_hz;
-        TELEMETRY_OUT[7] = res.cpp_db;
-        TELEMETRY_OUT[8] = res.hnr_db;
-        TELEMETRY_OUT[9] = res.jitter_percent;
-        TELEMETRY_OUT[10] = res.shimmer_percent;
-        TELEMETRY_OUT[11] = res.hyper_phonation_ratio;
-        TELEMETRY_OUT[12] = res.dysphonia_ratio;
-        TELEMETRY_OUT[13] = res.stridor_index;
-        TELEMETRY_OUT[14] = (res.phonation_mode as u32) as f64;
-        TELEMETRY_OUT[15] = (res.reflex_class as u32) as f64;
-        TELEMETRY_OUT[16] = res.reflex_probabilities[top_idx.min(5)];
-        TELEMETRY_OUT[17] = res.lpc.normalized_error;
+        let out = core::ptr::addr_of_mut!(TELEMETRY_OUT);
+        (*out)[0] = res.f0_hz;
+        (*out)[1] = res.f1_hz;
+        (*out)[2] = res.f2_hz;
+        (*out)[3] = res.f3_hz;
+        (*out)[4] = res.bw1_hz;
+        (*out)[5] = res.bw2_hz;
+        (*out)[6] = res.bw3_hz;
+        (*out)[7] = res.cpp_db;
+        (*out)[8] = res.hnr_db;
+        (*out)[9] = res.jitter_percent;
+        (*out)[10] = res.shimmer_percent;
+        (*out)[11] = res.hyper_phonation_ratio;
+        (*out)[12] = res.dysphonia_ratio;
+        (*out)[13] = res.stridor_index;
+        (*out)[14] = (res.phonation_mode as u32) as f64;
+        (*out)[15] = (res.reflex_class as u32) as f64;
+        (*out)[16] = res.reflex_probabilities[top_idx.min(5)];
+        (*out)[17] = res.lpc.normalized_error;
     }
     1
 }
@@ -115,20 +116,21 @@ pub extern "C" fn pedia_eval_bilirubin_bhutani(
         prior_hours,
     );
     unsafe {
-        TELEMETRY_OUT[0] = opt.tcb_mg_dl;
-        TELEMETRY_OUT[1] = opt.tcb_umol_l;
-        TELEMETRY_OUT[2] = opt.od_melanin;
-        TELEMETRY_OUT[3] = opt.od_bilirubin_compensated;
-        TELEMETRY_OUT[4] = opt.cie_b_star;
-        TELEMETRY_OUT[5] = opt.estimated_kramer_zone as f64;
-        TELEMETRY_OUT[6] = aap.phototherapy_threshold_mg_dl;
-        TELEMETRY_OUT[7] = aap.exchange_threshold_mg_dl;
-        TELEMETRY_OUT[8] = aap.escalation_of_care_mg_dl;
-        TELEMETRY_OUT[9] = aap.bhutani_40th_mg_dl;
-        TELEMETRY_OUT[10] = aap.bhutani_75th_mg_dl;
-        TELEMETRY_OUT[11] = aap.bhutani_95th_mg_dl;
-        TELEMETRY_OUT[12] = aap.rate_of_rise_mg_dl_per_hr;
-        TELEMETRY_OUT[13] = (aap.risk_zone as u32) as f64;
+        let out = core::ptr::addr_of_mut!(TELEMETRY_OUT);
+        (*out)[0] = opt.tcb_mg_dl;
+        (*out)[1] = opt.tcb_umol_l;
+        (*out)[2] = opt.od_melanin;
+        (*out)[3] = opt.od_bilirubin_compensated;
+        (*out)[4] = opt.cie_b_star;
+        (*out)[5] = opt.estimated_kramer_zone as f64;
+        (*out)[6] = aap.phototherapy_threshold_mg_dl;
+        (*out)[7] = aap.exchange_threshold_mg_dl;
+        (*out)[8] = aap.escalation_of_care_mg_dl;
+        (*out)[9] = aap.bhutani_40th_mg_dl;
+        (*out)[10] = aap.bhutani_75th_mg_dl;
+        (*out)[11] = aap.bhutani_95th_mg_dl;
+        (*out)[12] = aap.rate_of_rise_mg_dl_per_hr;
+        (*out)[13] = (aap.risk_zone as u32) as f64;
     }
     1
 }

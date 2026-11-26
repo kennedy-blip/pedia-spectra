@@ -235,8 +235,9 @@ public class PediatricBioAcousticSafeAudioPlugin extends Plugin {
     private double estimateAutocorrPitchHz(float[] frame, int length) {
         int minLag = Math.max(10, SAMPLE_RATE_HZ / 2_100);
         int maxLag = Math.min(length / 2, SAMPLE_RATE_HZ / 230);
-        double bestCorr = 0.0;
-        int bestLag = minLag;
+        double[] corrCurve = new double[maxLag + 1];
+        double globalMaxCorr = 0.0;
+        int globalMaxLag = minLag;
 
         for (int lag = minLag; lag <= maxLag; lag++) {
             double num = 0.0;
@@ -253,9 +254,24 @@ public class PediatricBioAcousticSafeAudioPlugin extends Plugin {
             double denom = Math.sqrt(e1 * e2);
             if (denom > 1e-9) {
                 double r = num / denom;
-                if (r > bestCorr) {
-                    bestCorr = r;
+                corrCurve[lag] = r;
+                if (r > globalMaxCorr) {
+                    globalMaxCorr = r;
+                    globalMaxLag = lag;
+                }
+            }
+        }
+
+        double bestCorr = globalMaxCorr;
+        int bestLag = globalMaxLag;
+        double threshold = globalMaxCorr * 0.92;
+        if (globalMaxCorr > 0.28) {
+            for (int lag = minLag + 1; lag < maxLag; lag++) {
+                double c = corrCurve[lag];
+                if (c >= threshold && c >= corrCurve[lag - 1] && c >= corrCurve[lag + 1]) {
                     bestLag = lag;
+                    bestCorr = c;
+                    break;
                 }
             }
         }
