@@ -152,11 +152,12 @@ export function runLpcFormantAnalysis(samples, sampleRate = 48000) {
   const f2Hz = topFormants[1]?.freq ?? 1950;
   const f3Hz = topFormants[2]?.freq ?? 3450;
 
-  // 5. Normalized autocorrelation F0 pitch estimation (230 Hz .. 2,150 Hz) + HNR
+  // 5. Normalized autocorrelation F0 pitch estimation (230 Hz .. 2,150 Hz) + first-peak anti-octave-halving + HNR
   const minLag = Math.max(8, Math.floor(sampleRate / 2150));
   const maxLag = Math.min(Math.floor(n / 2), Math.floor(sampleRate / 230));
-  let bestCorr = 0;
-  let bestLag = minLag;
+  const corrCurve = new Float64Array(maxLag + 1);
+  let globalMaxCorr = 0;
+  let globalMaxLag = minLag;
 
   for (let lag = minLag; lag <= maxLag; lag++) {
     let num = 0;
@@ -173,14 +174,40 @@ export function runLpcFormantAnalysis(samples, sampleRate = 48000) {
     const denom = Math.sqrt(e1 * e2);
     if (denom > 1e-9) {
       const corr = num / denom;
-      if (corr > bestCorr) {
-        bestCorr = corr;
-        bestLag = lag;
+      corrCurve[lag] = corr;
+      if (corr > globalMaxCorr) {
+        globalMaxCorr = corr;
+        globalMaxLag = lag;
       }
     }
   }
 
-  const f0Hz = bestCorr > 0.24 ? sampleRate / bestLag : 0;
+  let bestCorr = globalMaxCorr;
+  let bestLag = globalMaxLag;
+  const peakThreshold = globalMaxCorr * 0.92;
+  if (globalMaxCorr > 0.24) {
+    for (let lag = minLag + 1; lag < maxLag; lag++) {
+      const c = corrCurve[lag];
+      if (c >= peakThreshold && c >= corrCurve[lag - 1] && c >= corrCurve[lag + 1]) {
+        bestLag = lag;
+        bestCorr = c;
+        break;
+      }
+    }
+  }
+
+  let refinedLag = bestLag;
+  if (bestLag > minLag && bestLag < maxLag) {
+    const y0 = corrCurve[bestLag - 1];
+    const y1 = corrCurve[bestLag];
+    const y2 = corrCurve[bestLag + 1];
+    const denom = y0 - 2 * y1 + y2;
+    if (Math.abs(denom) > 1e-9) {
+      refinedLag = bestLag + (0.5 * (y0 - y2)) / denom;
+    }
+  }
+
+  const f0Hz = bestCorr > 0.24 ? sampleRate / Math.max(1, refinedLag) : 0;
   const clampedCorr = Math.min(0.992, Math.max(0.05, bestCorr));
   const hnrDb = 10 * Math.log10(clampedCorr / (1 - clampedCorr));
 

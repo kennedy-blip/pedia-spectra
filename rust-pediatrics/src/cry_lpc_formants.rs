@@ -371,8 +371,8 @@ pub fn estimate_f0_hnr_cpp(samples: &[f64], sample_rate_hz: f64) -> (f64, f64, f
         return (0.0, 0.0, 0.0);
     }
 
-    let mut best_lag = min_lag;
-    let mut best_corr = -1.0_f64;
+    let mut global_max_lag = min_lag;
+    let mut global_max_corr = -1.0_f64;
     let mut corr_curve = vec![0.0_f64; max_lag + 1];
 
     for lag in min_lag..=max_lag {
@@ -390,9 +390,27 @@ pub fn estimate_f0_hnr_cpp(samples: &[f64], sample_rate_hz: f64) -> (f64, f64, f
         let norm = (e1 * e2).sqrt().max(1e-18);
         let r_norm = num / norm;
         corr_curve[lag] = r_norm;
-        if r_norm > best_corr {
-            best_corr = r_norm;
-            best_lag = lag;
+        if r_norm > global_max_corr {
+            global_max_corr = r_norm;
+            global_max_lag = lag;
+        }
+    }
+
+    // McLeod Pitch Method / YIN anti-octave-halving first-peak selection:
+    // choose the shortest lag local maximum within 92% of the global correlation peak
+    // so half-integer fundamental periods (e.g. 1,280 Hz at 48 kHz = 37.5 samples)
+    // do not alias onto their exact-integer 2x subharmonic (75 samples = 640 Hz).
+    let mut best_lag = global_max_lag;
+    let mut best_corr = global_max_corr;
+    let peak_threshold = global_max_corr * 0.92;
+    if global_max_corr > 0.22 {
+        for lag in (min_lag + 1)..max_lag {
+            let c = corr_curve[lag];
+            if c >= peak_threshold && c >= corr_curve[lag - 1] && c >= corr_curve[lag + 1] {
+                best_lag = lag;
+                best_corr = c;
+                break;
+            }
         }
     }
 
