@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.vercel/
+rust-pediatrics/target/
+android/build/
+android/app/build/
+*.log
+.DS_Store
